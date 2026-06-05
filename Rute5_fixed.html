@@ -362,7 +362,7 @@ let isDragging=false,wasDragged=false;
 let dragX0=0,dragY0=0,vx0=0,vy0=0,pinchD0=0;
 let pickMode=null,selStart=null,selEnd=null,activePath=[];
 let animPaused=false,animActive=false;
-
+ 
 let LOKASI={
   "Tembeling":{x:160,y:130},"Tamdjunguban":{x:460,y:80},"Teloekdalam":{x:780,y:110},
   "Tanjung Pinang":{x:110,y:390},"Anculai":{x:360,y:280},"Berakit":{x:640,y:240},
@@ -371,7 +371,7 @@ let LOKASI={
   "Tanaga":{x:930,y:640},"Pulau Galang":{x:1230,y:560},"Sijago":{x:1180,y:220},
   "Senggarang":{x:330,y:690},"Dompak":{x:100,y:650}
 };
-let ADJ={};  
+let ADJ={};
  
 /* ── SVG UTILS ── */
 function $s(){return document.getElementById('map-svg')}
@@ -497,30 +497,6 @@ function buildCityList(){
   });
 }
  
-/* ── SHUFFLE ── */
-function shuffleMap(){
-  const names=Object.keys(LOKASI);
-  for(let i=names.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[names[i],names[j]]=[names[j],names[i]];}
-  const margin=90,minD=125,placed=[];
-  for(const name of names){
-    let best=null,bestScore=-1;
-    for(let t=0;t<250;t++){
-      const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random());
-      const rawX=(W/2)+(W/2-margin)*r*Math.cos(a)+(Math.random()-.5)*(W*.55);
-      const rawY=(H/2)+(H/2-margin)*r*Math.sin(a)+(Math.random()-.5)*(H*.55);
-      const cx=Math.max(margin,Math.min(W-margin,rawX));
-      const cy=Math.max(margin,Math.min(H-margin,rawY));
-      let minD2=Infinity;
-      for(const p of placed)minD2=Math.min(minD2,Math.hypot(cx-p.x,cy-p.y));
-      if(placed.length===0)minD2=Infinity;
-      if(minD2>=minD){best={x:cx,y:cy};break;}
-      if(minD2>bestScore){bestScore=minD2;best={x:cx,y:cy};}
-    }
-    placed.push(best);LOKASI[name].x=Math.round(best.x);LOKASI[name].y=Math.round(best.y);
-  }
-  clearRoute(true);initGraph();drawMap();
-}
- 
 function clearRoute(silent=false){
   activePath=[];selStart=null;selEnd=null;
   document.getElementById('nameStart').textContent='Pilih kota awal';
@@ -539,7 +515,15 @@ function edgeHash(u,v){
   const s=[u,v].sort().join('~~');let h=0;
   for(const c of s)h=(h*31+c.charCodeAt(0))>>>0;return h;
 }
+function roadD(u,v){
+  const cp = roadCP(u,v);
 
+  const p = LOKASI[u];
+  const q = LOKASI[v];
+
+  return `M${p.x} ${p.y} Q${cp.x} ${cp.y} ${q.x} ${q.y}`;
+}
+// Kembalikan control point dari roadD (dipakai untuk smooth junction)
 function roadCP(u,v){
   let a=u, b=v;
 
@@ -570,21 +554,14 @@ function roadCP(u,v){
     y:(p.y+q.y)/2+ny*off
   };
 }
-function roadD(u,v){
-  const cp = roadCP(u,v);
-
-  const p = LOKASI[u];
-  const q = LOKASI[v];
-
-  return `M${p.x} ${p.y} Q${cp.x} ${cp.y} ${q.x} ${q.y}`;
-}
-
 function roadMid(u,v){
   const p=LOKASI[u],q=LOKASI[v];
   const dx=q.x-p.x,dy=q.y-p.y,len=Math.hypot(dx,dy);
   if(len<1)return{x:(p.x+q.x)/2,y:(p.y+q.y)/2};
   const nx=-dy/len,ny=dx/len,h=edgeHash(u,v);
-  const off=((h%19)-9)/55*len;
+  const rawRatio=((h%19)-9)/45;
+  const sign=rawRatio>=0?1:-1;
+  const off=sign*Math.max(Math.abs(rawRatio),0.13)*len;
   return{x:(p.x+q.x)/2+nx*off,y:(p.y+q.y)/2+ny*off};
 }
 function motionPath(path){
@@ -811,9 +788,89 @@ function createVehicle(path){
   ['animVehicle','animPath'].forEach(id=>{const e=document.getElementById(id);if(e)e.remove();});
   const mp=ns('path');mp.setAttribute('id','animPath');mp.setAttribute('d',motionPath(path));mp.setAttribute('fill','none');s.appendChild(mp);
   const vg=ns('g');vg.setAttribute('id','animVehicle');
-  const vb=ns('circle');vb.setAttribute('r','20');vb.setAttribute('fill','#0f1f12');vb.setAttribute('stroke','#f0c040');vb.setAttribute('stroke-width','2.5');vg.appendChild(vb);
-  const vring=ns('circle');vring.setAttribute('r','26');vring.setAttribute('fill','none');vring.setAttribute('stroke','rgba(240,192,64,.2)');vring.setAttribute('stroke-width','1.5');vg.appendChild(vring);
-  const ve=ns('text');ve.setAttribute('font-size','18');ve.setAttribute('text-anchor','middle');ve.setAttribute('y','6');ve.setAttribute('pointer-events','none');ve.textContent='🚌';vg.appendChild(ve);
+  // ── SVG Bus (top-down view) – arah MAJU ke kanan (+X) ──────────────────
+  // rotate="auto" pada animateMotion akan memutar group ini sehingga sumbu +X
+  // selalu sejajar tangent path → bus menghadap ke arah perjalanan tanpa drift.
+  //
+  // Ukuran: lebar (arah gerak) 34px, tinggi 18px, pivot di tengah bodi.
+  const busG=ns('g');busG.setAttribute('transform','translate(-17,-9)'); // pivot ke tengah
+
+  // Glow / shadow di bawah bus
+  const glow=ns('ellipse');
+  glow.setAttribute('cx','17');glow.setAttribute('cy','9');
+  glow.setAttribute('rx','20');glow.setAttribute('ry','12');
+  glow.setAttribute('fill','rgba(240,192,64,.18)');busG.appendChild(glow);
+
+  // Badan utama bus
+  const body=ns('rect');
+  body.setAttribute('x','2');body.setAttribute('y','2');
+  body.setAttribute('width','30');body.setAttribute('height','14');
+  body.setAttribute('rx','3');body.setAttribute('fill','#f0c040');
+  body.setAttribute('stroke','#b89010');body.setAttribute('stroke-width','1.2');
+  busG.appendChild(body);
+
+  // Kaca depan (sisi kanan = arah maju)
+  const wf=ns('rect');
+  wf.setAttribute('x','27');wf.setAttribute('y','4');
+  wf.setAttribute('width','4');wf.setAttribute('height','10');
+  wf.setAttribute('rx','1.5');wf.setAttribute('fill','rgba(180,230,255,.8)');
+  wf.setAttribute('stroke','#b89010');wf.setAttribute('stroke-width','.7');
+  busG.appendChild(wf);
+
+  // Kaca belakang (sisi kiri)
+  const wb=ns('rect');
+  wb.setAttribute('x','3');wb.setAttribute('y','4');
+  wb.setAttribute('width','3');wb.setAttribute('height','10');
+  wb.setAttribute('rx','1.2');wb.setAttribute('fill','rgba(120,170,200,.5)');
+  wb.setAttribute('stroke','#b89010');wb.setAttribute('stroke-width','.7');
+  busG.appendChild(wb);
+
+  // Jendela samping (3 buah)
+  [9,15,21].forEach(xw=>{
+    const w=ns('rect');w.setAttribute('x',xw);w.setAttribute('y','3.5');
+    w.setAttribute('width','4');w.setAttribute('height','4');
+    w.setAttribute('rx','1');w.setAttribute('fill','rgba(180,230,255,.6)');
+    w.setAttribute('stroke','#b89010');w.setAttribute('stroke-width','.5');
+    busG.appendChild(w);
+    const w2=ns('rect');w2.setAttribute('x',xw);w2.setAttribute('y','10.5');
+    w2.setAttribute('width','4');w2.setAttribute('height','4');
+    w2.setAttribute('rx','1');w2.setAttribute('fill','rgba(180,230,255,.6)');
+    w2.setAttribute('stroke','#b89010');w2.setAttribute('stroke-width','.5');
+    busG.appendChild(w2);
+  });
+
+  // Garis tengah bodi
+  const stripe=ns('line');
+  stripe.setAttribute('x1','6');stripe.setAttribute('y1','9');
+  stripe.setAttribute('x2','26');stripe.setAttribute('y2','9');
+  stripe.setAttribute('stroke','rgba(184,144,16,.5)');stripe.setAttribute('stroke-width','.8');
+  busG.appendChild(stripe);
+
+  // Lampu depan (kanan)
+  const lf=ns('ellipse');
+  lf.setAttribute('cx','33');lf.setAttribute('cy','5.5');
+  lf.setAttribute('rx','2');lf.setAttribute('ry','1.5');
+  lf.setAttribute('fill','rgba(255,240,150,.9)');
+  busG.appendChild(lf);
+  const lf2=ns('ellipse');
+  lf2.setAttribute('cx','33');lf2.setAttribute('cy','12.5');
+  lf2.setAttribute('rx','2');lf2.setAttribute('ry','1.5');
+  lf2.setAttribute('fill','rgba(255,240,150,.9)');
+  busG.appendChild(lf2);
+
+  // Lampu belakang (kiri, merah)
+  const lb=ns('ellipse');
+  lb.setAttribute('cx','1');lb.setAttribute('cy','5.5');
+  lb.setAttribute('rx','1.5');lb.setAttribute('ry','1.2');
+  lb.setAttribute('fill','rgba(255,80,60,.85)');
+  busG.appendChild(lb);
+  const lb2=ns('ellipse');
+  lb2.setAttribute('cx','1');lb2.setAttribute('cy','12.5');
+  lb2.setAttribute('rx','1.5');lb2.setAttribute('ry','1.2');
+  lb2.setAttribute('fill','rgba(255,80,60,.85)');
+  busG.appendChild(lb2);
+
+  vg.appendChild(busG);
   const anim=ns('animateMotion');anim.setAttribute('dur',(path.length*2)+'s');anim.setAttribute('repeatCount','indefinite');anim.setAttribute('rotate','auto');
   const mlink=ns('mpath');mlink.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href','#animPath');
   anim.appendChild(mlink);vg.appendChild(anim);s.appendChild(vg);
