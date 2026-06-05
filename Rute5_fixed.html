@@ -539,25 +539,6 @@ function edgeHash(u,v){
   const s=[u,v].sort().join('~~');let h=0;
   for(const c of s)h=(h*31+c.charCodeAt(0))>>>0;return h;
 }
-/*function roadD(u,v){
-  const p=LOKASI[u],q=LOKASI[v];
-  const dx=q.x-p.x,dy=q.y-p.y,len=Math.hypot(dx,dy);
-  if(len<1)return`M${p.x} ${p.y}L${q.x} ${q.y}`;
-  const nx=-dy/len,ny=dx/len,h=edgeHash(u,v);
-  // Perbesar ratio agar kurva lebih terlihat (dari /110 ke /55)
-  const ratio=((h%19)-9)/55,off=ratio*len;
-  const mx=(p.x+q.x)/2+nx*off,my=(p.y+q.y)/2+ny*off;
-  return`M${p.x} ${p.y} Q${mx} ${my} ${q.x} ${q.y}`;
-}
-// Kembalikan control point dari roadD (dipakai untuk smooth junction)
-function roadCP(u,v){
-  const p=LOKASI[u],q=LOKASI[v];
-  const dx=q.x-p.x,dy=q.y-p.y,len=Math.hypot(dx,dy);
-  if(len<1)return{x:(p.x+q.x)/2,y:(p.y+q.y)/2};
-  const nx=-dy/len,ny=dx/len,h=edgeHash(u,v);
-  const ratio=((h%19)-9)/55,off=ratio*len;
-  return{x:(p.x+q.x)/2+nx*off,y:(p.y+q.y)/2+ny*off};
-}*/
 
 function roadCP(u,v){
   let a=u, b=v;
