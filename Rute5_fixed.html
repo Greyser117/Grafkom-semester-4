@@ -497,6 +497,37 @@ function buildCityList(){
   });
 }
  
+/* ── SHUFFLE ── */
+function shuffleMap(){
+  const names=Object.keys(LOKASI);
+  for(let i=names.length-1;i>0;i--){
+  const j=Math.floor(Math.random()*(i+1));
+  [names[i],names[j]]=[names[j],names[i]];
+  }
+  const margin=90,minD=125,placed=[];
+  for(const name of names){
+    let best=null,bestScore=-1;
+    for(let t=0;t<250;t++){
+      const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random());
+      const rawX=(W/2)+(W/2-margin)*r*Math.cos(a)+(Math.random()-.5)*(W*.55);
+      const rawY=(H/2)+(H/2-margin)*r*Math.sin(a)+(Math.random()-.5)*(H*.55);
+      const cx=Math.max(margin,Math.min(W-margin,rawX));
+      const cy=Math.max(margin,Math.min(H-margin,rawY));
+      let minD2=Infinity;
+      for(const p of placed)minD2=Math.min(minD2,Math.hypot(cx-p.x,cy-p.y));
+      if(placed.length===0)minD2=Infinity;
+      if(minD2>=minD){best={x:cx,y:cy};break;}
+      if(minD2>bestScore){bestScore=minD2;best={x:cx,y:cy};}
+    }
+    placed.push(best);
+    LOKASI[name].x=Math.round(best.x);
+    LOKASI[name].y=Math.round(best.y);
+  }
+  clearRoute(true);
+  initGraph();
+  drawMap();
+}
+
 function clearRoute(silent=false){
   activePath=[];selStart=null;selEnd=null;
   document.getElementById('nameStart').textContent='Pilih kota awal';
