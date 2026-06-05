@@ -363,7 +363,15 @@ let dragX0=0,dragY0=0,vx0=0,vy0=0,pinchD0=0;
 let pickMode=null,selStart=null,selEnd=null,activePath=[];
 let animPaused=false,animActive=false;
 
-  
+let LOKASI={
+  "Tembeling":{x:160,y:130},"Tamdjunguban":{x:460,y:80},"Teloekdalam":{x:780,y:110},
+  "Tanjung Pinang":{x:110,y:390},"Anculai":{x:360,y:280},"Berakit":{x:640,y:240},
+  "Lagoi":{x:920,y:300},"Nibun":{x:190,y:570},"Kangboi":{x:500,y:470},
+  "Mengkilo":{x:760,y:530},"Trikora":{x:1060,y:420},"Kijang":{x:630,y:690},
+  "Tanaga":{x:930,y:640},"Pulau Galang":{x:1230,y:560},"Sijago":{x:1180,y:220},
+  "Senggarang":{x:330,y:690},"Dompak":{x:100,y:650}
+};
+let ADJ={};  
  
 /* ── SVG UTILS ── */
 function $s(){return document.getElementById('map-svg')}
