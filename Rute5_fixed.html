@@ -956,16 +956,7 @@ function setAnimState(active, paused){
 }
  
 /* ── TOGGLE PAUSE / RESUME ── */
-function toggleAnim(){
-  if(!animActive) return;
-  if(!animPaused){
-    $s().pauseAnimations();
-    setAnimState(true, true);
-  } else {
-    $s().unpauseAnimations();
-    setAnimState(true, false);
-  }
-}
+
  
 /* ── ROUTE ACTIONS ── */
 function findRoute(){
