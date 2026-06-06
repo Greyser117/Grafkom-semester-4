@@ -912,7 +912,48 @@ function createVehicle(path){
   if($s().animationsPaused()){$s().unpauseAnimations();}
 }
 
-
+function setAnimState(active, paused){
+  animActive = active;
+  animPaused = paused;
+ 
+  const btn   = document.getElementById('btnAnimCtrl');
+  const icon  = document.getElementById('animIcon');
+  const label = document.getElementById('animLabel');
+  const chip  = document.getElementById('animChip');
+  const chipTxt = document.getElementById('animChipText');
+  const statusTxt = document.getElementById('animStatusText');
+ 
+  if(!active){
+    // Hide button, reset chip
+    btn.classList.remove('active','paused');
+    btn.style.display = 'none';
+    chip.className = 'anim-chip';
+    statusTxt.textContent = '—';
+    return;
+  }
+ 
+  // Show button
+  btn.style.display = 'flex';
+  btn.classList.add('active');
+ 
+  if(paused){
+    btn.classList.add('paused');
+    // Show RESUME icon (play triangle)
+    icon.innerHTML = '<polygon points="5,3 19,12 5,21" fill="currentColor" stroke="none"/>';
+    label.textContent = 'RESUME';
+    chip.className = 'anim-chip paused';
+    chipTxt.textContent = 'PAUSED';
+    statusTxt.textContent = '';
+  } else {
+    btn.classList.remove('paused');
+    // Show PAUSE icon (two bars)
+    icon.innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+    label.textContent = 'PAUSE';
+    chip.className = 'anim-chip playing';
+    chipTxt.textContent = 'PLAYING';
+    statusTxt.textContent = '';
+  }
+}
  
 /* ── TOGGLE PAUSE / RESUME ── */
 function toggleAnim(){
