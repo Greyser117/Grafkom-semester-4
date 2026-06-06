@@ -595,7 +595,49 @@ function roadMid(u,v){
   const off=sign*Math.max(Math.abs(rawRatio),0.13)*len;
   return{x:(p.x+q.x)/2+nx*off,y:(p.y+q.y)/2+ny*off};
 }
+function motionPath(path){
+  // Bangun path animasi yang PERSIS sama dengan visual jalan (pakai roadCP yang sama).
+  // Di setiap node persimpangan, gunakan cubic Bezier agar bus tidak "patah" arah
+  // tapi tetap melewati titik yang sama dengan visual jalan.
+  if(path.length<2)return'';
+  if(path.length===2)return roadD(path[0],path[1]);
 
+  // Kumpulkan semua control point per segmen
+  const segs=[];
+  for(let i=0;i<path.length-1;i++){
+    const cp=roadCP(path[i],path[i+1]);
+    const p=LOKASI[path[i]],q=LOKASI[path[i+1]];
+    segs.push({p,cp,q});
+  }
+
+  // Mulai dari titik awal
+  let d=`M${segs[0].p.x} ${segs[0].p.y}`;
+
+  for(let i=0;i<segs.length;i++){
+    const {p,cp,q}=segs[i];
+    if(i===segs.length-1){
+      // Segmen terakhir: pakai Q biasa
+      d+=` Q${cp.x.toFixed(1)} ${cp.y.toFixed(1)} ${q.x} ${q.y}`;
+    } else {
+      // Di junction: titik "keluar" segmen ini dan "masuk" segmen berikutnya
+      // adalah control point masing-masing segmen. Buat cubic Bezier dari
+      // p ke midpoint junction, sehingga bus melengkung smooth.
+      const nextCP=segs[i+1].cp;
+      const nextP=segs[i+1].p; // = q dari segmen ini
+
+      // Titik tengah antara cp segmen ini dan node q (untuk smooth exit)
+      const exitX=(cp.x+q.x)/2, exitY=(cp.y+q.y)/2;
+      // Titik tengah antara node q dan cp segmen berikutnya (untuk smooth entry)
+      const entryX=(q.x+nextCP.x)/2, entryY=(q.y+nextCP.y)/2;
+
+      // Gambar kurva menuju "exit point" lalu "entry point" ke node berikutnya
+      d+=` Q${cp.x.toFixed(1)} ${cp.y.toFixed(1)} ${exitX.toFixed(1)} ${exitY.toFixed(1)}`;
+      d+=` Q${q.x} ${q.y} ${entryX.toFixed(1)} ${entryY.toFixed(1)}`;
+    }
+  }
+  return d;
+}
+ 
 function inPath(u,v,p){
   for(let i=0;i<p.length-1;i++)if((p[i]===u&&p[i+1]===v)||(p[i]===v&&p[i+1]===u))return true;
   return false;
