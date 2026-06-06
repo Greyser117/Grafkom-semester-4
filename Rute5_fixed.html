@@ -800,7 +800,18 @@ function drawMap(hlPath=[]){
 }
  
 /* ── DIJKSTRA ── */
-
+function dijkstra(start,end){
+  const d2={},prev={},pq=new Set(Object.keys(LOKASI));
+  Object.keys(LOKASI).forEach(n=>d2[n]=Infinity);d2[start]=0;
+  while(pq.size){
+    const u=[...pq].reduce((m,n)=>d2[n]<d2[m]?n:m);
+    if(u===end||d2[u]===Infinity)break;pq.delete(u);
+    ADJ[u].forEach(({node:v,weight:w})=>{const alt=d2[u]+w;if(alt<d2[v]){d2[v]=alt;prev[v]=u;}});
+  }
+  const path=[];let cur=end;
+  while(cur){path.unshift(cur);cur=prev[cur];}
+  return{path:path[0]===start?path:[],weight:d2[end]};
+}
  
 /* ── VEHICLE ── */
 function createVehicle(path){
