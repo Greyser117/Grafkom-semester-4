@@ -381,7 +381,12 @@ function clampVB(){
   VX=Math.max(-W*.3,Math.min(W*1.3-VW,VX));
   VY=Math.max(-H*.3,Math.min(H*1.3-VH,VY));
 }
-
+function doZoom(f){
+  const cx=VX+VW/2,cy=VY+VH/2;
+  VW=Math.min(W*2.2,Math.max(W*.15,VW*f));
+  VH=Math.min(H*2.2,Math.max(H*.15,VH*f));
+  VX=cx-VW/2;VY=cy-VH/2;clampVB();applyVB();
+}
 function resetZoom(){VX=0;VY=0;VW=W;VH=H;applyVB()}
  
 /* ── PICK MODE ── */
